@@ -1,18 +1,13 @@
-import { useState } from 'react';
-import { UserRole } from '@/types/chat';
+import { useState, useEffect } from 'react';
+import { UserRole, User } from '@/types/chat';
 import { Card, CardContent } from '@/components/ui/card';
-import { Crown, Users, GraduationCap, BookOpen } from 'lucide-react';
+import { Crown, Users, GraduationCap, BookOpen, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UserRoleSelectorProps {
   onSelectUser: (userId: string) => void;
 }
 
-const testUsers = [
-  { id: '1', name: 'Super Admin', role: 'super_admin' as UserRole },
-  { id: '2', name: 'Admin User', role: 'admin' as UserRole },
-  { id: '3', name: 'Teacher John', role: 'teacher' as UserRole },
-  { id: '4', name: 'Student Alice', role: 'student' as UserRole },
-];
 
 const getRoleIcon = (role: UserRole) => {
   switch (role) {
@@ -28,6 +23,40 @@ const getRoleIcon = (role: UserRole) => {
 };
 
 export function UserRoleSelector({ onSelectUser }: UserRoleSelectorProps) {
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .order('role');
+      
+      if (error) {
+        console.error('Error fetching users:', error);
+      } else {
+        setUsers(data || []);
+      }
+      setLoading(false);
+    };
+
+    fetchUsers();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Card className="p-8">
+          <div className="flex items-center gap-3">
+            <Loader2 className="w-6 h-6 animate-spin" />
+            <span className="text-lg">Loading users...</span>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-2xl">
@@ -41,7 +70,7 @@ export function UserRoleSelector({ onSelectUser }: UserRoleSelectorProps) {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {testUsers.map((user) => (
+          {users.map((user) => (
             <Card
               key={user.id}
               className="cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-105 hover:bg-chat-hover"
