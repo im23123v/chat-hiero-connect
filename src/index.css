@@ -53,6 +53,14 @@ All colors MUST be HSL.
     --sidebar-border: 220 13% 91%;
 
     --sidebar-ring: 217.2 91.2% 59.8%;
+    
+    /* Chat system colors */
+    --chat-online: 142.1 76.2% 36.3%;
+    --chat-away: 47.9 95.8% 53.1%;
+    --chat-offline: 0 0% 63.9%;
+    --chat-message-sent: 221.2 83.2% 53.3%;
+    --chat-message-received: 210 40% 96.1%;
+    --chat-hover: 210 40% 92%;
   }
 
   .dark {
@@ -91,6 +99,14 @@ All colors MUST be HSL.
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+    
+    /* Chat system colors - dark mode */
+    --chat-online: 142.1 76.2% 36.3%;
+    --chat-away: 47.9 95.8% 53.1%;
+    --chat-offline: 0 0% 45%;
+    --chat-message-sent: 221.2 83.2% 53.3%;
+    --chat-message-received: 217.2 32.6% 17.5%;
+    --chat-hover: 217.2 32.6% 20%;
   }
 }
 
