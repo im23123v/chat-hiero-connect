@@ -21,6 +21,12 @@ export function ChatApp() {
     startConversation,
   } = useChat(selectedUserId || '');
 
+  // Create a refetch function for users
+  const refetchUsers = async () => {
+    // Force re-fetch of all data by recreating the hook
+    window.location.reload();
+  };
+
   // Show user selection if no user is selected
   if (!selectedUserId) {
     return <UserRoleSelector onSelectUser={setSelectedUserId} />;
@@ -66,6 +72,7 @@ export function ChatApp() {
         activeConversation={activeConversation}
         onSelectConversation={handleSelectConversation}
         onStartConversation={startConversation}
+        onUserCreated={refetchUsers}
       />
       <ChatWindow
         messages={messages}

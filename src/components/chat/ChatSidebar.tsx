@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { MessageCircle, Users, Crown, GraduationCap, BookOpen } from 'lucide-react';
+import { CreateUserDialog } from './CreateUserDialog';
 
 interface ChatSidebarProps {
   currentUser: User;
@@ -13,6 +14,7 @@ interface ChatSidebarProps {
   activeConversation: string | null;
   onSelectConversation: (conversationId: string) => void;
   onStartConversation: (userId: string) => void;
+  onUserCreated: () => void;
 }
 
 const getRoleIcon = (role: string) => {
@@ -66,6 +68,7 @@ export function ChatSidebar({
   activeConversation,
   onSelectConversation,
   onStartConversation,
+  onUserCreated,
 }: ChatSidebarProps) {
   return (
     <div className="w-80 border-r border-border bg-card h-full flex flex-col">
@@ -85,6 +88,14 @@ export function ChatSidebar({
               </Badge>
             </div>
           </div>
+        </div>
+        
+        {/* Add User Button */}
+        <div className="px-4 pb-2">
+          <CreateUserDialog 
+            currentUserRole={currentUser.role} 
+            onUserCreated={onUserCreated}
+          />
         </div>
       </div>
 
