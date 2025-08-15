@@ -53,27 +53,84 @@ export type Database = {
           },
         ]
       }
+      group_members: {
+        Row: {
+          group_id: string
+          id: string
+          joined_at: string
+          role: string | null
+          user_id: string
+        }
+        Insert: {
+          group_id: string
+          id?: string
+          joined_at?: string
+          role?: string | null
+          user_id: string
+        }
+        Update: {
+          group_id?: string
+          id?: string
+          joined_at?: string
+          role?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      groups: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           content: string
-          conversation_id: string
+          conversation_id: string | null
           created_at: string
+          group_id: string | null
           id: string
           is_read: boolean | null
           sender_id: string
         }
         Insert: {
           content: string
-          conversation_id: string
+          conversation_id?: string | null
           created_at?: string
+          group_id?: string | null
           id?: string
           is_read?: boolean | null
           sender_id: string
         }
         Update: {
           content?: string
-          conversation_id?: string
+          conversation_id?: string | null
           created_at?: string
+          group_id?: string | null
           id?: string
           is_read?: boolean | null
           sender_id?: string
@@ -133,7 +190,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      can_create_user_with_role: {
+        Args: {
+          creator_role: Database["public"]["Enums"]["user_role"]
+          target_role: Database["public"]["Enums"]["user_role"]
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       user_role: "super_admin" | "admin" | "teacher" | "student"
