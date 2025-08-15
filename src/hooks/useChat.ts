@@ -57,18 +57,11 @@ export function useChat(currentUserId: string) {
 
   // Fetch conversations
   const fetchConversations = useCallback(async () => {
+    if (!currentUserId) return;
+
     const { data, error } = await supabase
       .from('conversations')
-      .select(`
-        *,
-        messages!inner (
-          id,
-          content,
-          created_at,
-          sender_id,
-          sender:users!messages_sender_id_fkey (name, role)
-        )
-      `)
+      .select('*')
       .or(`participant_1.eq.${currentUserId},participant_2.eq.${currentUserId}`)
       .order('last_message_at', { ascending: false });
     
@@ -97,7 +90,7 @@ export function useChat(currentUserId: string) {
           .eq('conversation_id', conv.id)
           .order('created_at', { ascending: false })
           .limit(1)
-          .single();
+          .maybeSingle();
         
         return {
           ...conv,
@@ -227,6 +220,8 @@ export function useChat(currentUserId: string) {
 
   // Set up real-time subscriptions
   useEffect(() => {
+    if (!currentUserId) return;
+
     const messagesChannel = supabase
       .channel('messages-changes')
       .on(
@@ -236,12 +231,24 @@ export function useChat(currentUserId: string) {
           schema: 'public',
           table: 'messages',
         },
-        (payload) => {
+        async (payload) => {
           const newMessage = payload.new as Message;
+          
+          // Fetch sender info for the new message
+          const { data: sender } = await supabase
+            .from('users')
+            .select('name, role')
+            .eq('id', newMessage.sender_id)
+            .single();
+
+          const messageWithSender = {
+            ...newMessage,
+            sender: sender
+          } as Message;
           
           // Only add to current conversation if it matches
           if (newMessage.conversation_id === activeConversation) {
-            setMessages(prev => [...prev, newMessage]);
+            setMessages(prev => [...prev, messageWithSender]);
           }
           
           // Refresh conversations to update last message
@@ -269,7 +276,7 @@ export function useChat(currentUserId: string) {
       supabase.removeChannel(messagesChannel);
       supabase.removeChannel(conversationsChannel);
     };
-  }, [activeConversation, fetchConversations]);
+  }, [activeConversation, fetchConversations, currentUserId]);
 
   // Initial data fetch
   useEffect(() => {
