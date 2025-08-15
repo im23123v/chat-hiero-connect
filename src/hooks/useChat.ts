@@ -13,6 +13,11 @@ export function useChat(currentUserId: string) {
 
   // Fetch current user
   const fetchCurrentUser = useCallback(async () => {
+    if (!currentUserId || currentUserId.trim() === '') {
+      setCurrentUser(null);
+      return;
+    }
+
     const { data, error } = await supabase
       .from('users')
       .select('*')
@@ -21,6 +26,7 @@ export function useChat(currentUserId: string) {
     
     if (error) {
       console.error('Error fetching current user:', error);
+      setCurrentUser(null);
       return;
     }
     
