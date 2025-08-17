@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useChat } from '@/hooks/useChat';
+import { usePresence } from '@/hooks/usePresence';
 import { ChatSidebar } from './ChatSidebar';
 import { ChatWindow } from './ChatWindow';
 import { UserRoleSelector } from './UserRoleSelector';
@@ -20,6 +21,9 @@ export function ChatApp() {
     sendMessage,
     startConversation,
   } = useChat(selectedUserId || '');
+
+  // Set up presence tracking for the current user
+  usePresence(currentUser);
 
   // Create a refetch function for users
   const refetchUsers = async () => {

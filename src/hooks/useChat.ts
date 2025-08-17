@@ -222,8 +222,9 @@ export function useChat(currentUserId: string) {
   useEffect(() => {
     if (!currentUserId) return;
 
+    // Set up message real-time subscription
     const messagesChannel = supabase
-      .channel('messages-changes')
+      .channel('messages-realtime')
       .on(
         'postgres_changes',
         {
@@ -257,8 +258,9 @@ export function useChat(currentUserId: string) {
       )
       .subscribe();
 
+    // Set up conversation real-time subscription
     const conversationsChannel = supabase
-      .channel('conversations-changes')
+      .channel('conversations-realtime')
       .on(
         'postgres_changes',
         {
@@ -272,9 +274,51 @@ export function useChat(currentUserId: string) {
       )
       .subscribe();
 
+    // Set up users real-time subscription for online status
+    const usersChannel = supabase
+      .channel('users-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'users',
+        },
+        (payload) => {
+          const updatedUser = payload.new as User;
+          
+          // Update users list
+          setUsers(prev => 
+            prev.map(user => 
+              user.id === updatedUser.id 
+                ? { ...user, is_online: updatedUser.is_online, last_seen: updatedUser.last_seen }
+                : user
+            )
+          );
+          
+          // Update conversations list
+          setConversations(prev => 
+            prev.map(conv => 
+              conv.other_user?.id === updatedUser.id
+                ? { 
+                    ...conv, 
+                    other_user: { 
+                      ...conv.other_user, 
+                      is_online: updatedUser.is_online, 
+                      last_seen: updatedUser.last_seen 
+                    } 
+                  }
+                : conv
+            )
+          );
+        }
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(messagesChannel);
       supabase.removeChannel(conversationsChannel);
+      supabase.removeChannel(usersChannel);
     };
   }, [activeConversation, fetchConversations, currentUserId]);
 
