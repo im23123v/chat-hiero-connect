@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { UserRole, User } from '@/types/chat';
 import { Card, CardContent } from '@/components/ui/card';
-import { Crown, Users, GraduationCap, BookOpen, Loader2 } from 'lucide-react';
+import { Crown, Users, GraduationCap, BookOpen, Loader2, LogOut } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 
 interface UserRoleSelectorProps {
@@ -25,6 +27,7 @@ const getRoleIcon = (role: UserRole) => {
 export function UserRoleSelector({ onSelectUser }: UserRoleSelectorProps) {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const { signOut } = useAuth();
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -58,19 +61,20 @@ export function UserRoleSelector({ onSelectUser }: UserRoleSelectorProps) {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-2xl">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">
-            Hierarchical Chat System
-          </h1>
-          <p className="text-muted-foreground">
-            Select a user role to experience the chat system
-          </p>
+    <div className="min-h-screen bg-background p-8">
+      <div className="max-w-4xl mx-auto">
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground mb-2">Welcome to EduChat</h1>
+            <p className="text-muted-foreground">Select a user to start chatting</p>
+          </div>
+          <Button variant="outline" onClick={signOut}>
+            <LogOut className="w-4 h-4 mr-2" />
+            Sign Out
+          </Button>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {users.map((user) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">{users.map((user) => (
             <Card
               key={user.id}
               className="cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-105 hover:bg-chat-hover"

@@ -22,7 +22,7 @@ export function useChat(currentUserId: string) {
       .from('users')
       .select('*')
       .eq('id', currentUserId)
-      .single();
+      .maybeSingle();
     
     if (error) {
       console.error('Error fetching current user:', error);
@@ -79,7 +79,7 @@ export function useChat(currentUserId: string) {
           .from('users')
           .select('*')
           .eq('id', otherUserId)
-          .single();
+          .maybeSingle();
         
         const { data: lastMessage } = await supabase
           .from('messages')
@@ -240,7 +240,7 @@ export function useChat(currentUserId: string) {
             .from('users')
             .select('name, role')
             .eq('id', newMessage.sender_id)
-            .single();
+            .maybeSingle();
 
           const messageWithSender = {
             ...newMessage,
