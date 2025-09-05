@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { UserRole, User } from '@/types/chat';
 import { Card, CardContent } from '@/components/ui/card';
-import { Crown, Users, GraduationCap, BookOpen, Loader2, LogOut } from 'lucide-react';
+import { Crown, Users, GraduationCap, BookOpen, Loader2, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { RolePermissionsDialog } from './RolePermissionsDialog';
 
 interface UserRoleSelectorProps {
   onSelectUser: (userId: string) => void;
@@ -27,7 +27,11 @@ const getRoleIcon = (role: UserRole) => {
 export function UserRoleSelector({ onSelectUser }: UserRoleSelectorProps) {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
-  const { signOut } = useAuth();
+  const [showSettings, setShowSettings] = useState(false);
+  
+  // For demo purposes, assume the first user is super_admin
+  const currentUser = users[0];
+  const isSuperAdmin = currentUser?.role === 'super_admin';
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -68,10 +72,12 @@ export function UserRoleSelector({ onSelectUser }: UserRoleSelectorProps) {
             <h1 className="text-3xl font-bold text-foreground mb-2">Welcome to EduChat</h1>
             <p className="text-muted-foreground">Select a user to start chatting</p>
           </div>
-          <Button variant="outline" onClick={signOut}>
-            <LogOut className="w-4 h-4 mr-2" />
-            Sign Out
-          </Button>
+          {isSuperAdmin && (
+            <Button variant="outline" onClick={() => setShowSettings(true)}>
+              <Settings className="w-4 h-4 mr-2" />
+              Settings
+            </Button>
+          )}
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">{users.map((user) => (
@@ -108,6 +114,11 @@ export function UserRoleSelector({ onSelectUser }: UserRoleSelectorProps) {
             <li>• <span className="text-foreground">Student</span>: Can only chat with Teachers</li>
           </ul>
         </div>
+        
+        <RolePermissionsDialog 
+          open={showSettings} 
+          onOpenChange={setShowSettings} 
+        />
       </div>
     </div>
   );
