@@ -126,96 +126,136 @@ export function useChat(currentUserId: string) {
   const sendMessage = useCallback(async (content: string, recipientId: string) => {
     if (!currentUser) return;
     
-    // Check if conversation exists
-    let conversationId: string;
-    const existingConv = conversations.find(conv => 
-      (conv.participant_1 === currentUserId && conv.participant_2 === recipientId) ||
-      (conv.participant_1 === recipientId && conv.participant_2 === currentUserId)
-    );
-    
-    if (existingConv) {
-      conversationId = existingConv.id;
-    } else {
-      // Create new conversation
-      const { data: newConv, error: convError } = await supabase
-        .from('conversations')
-        .insert({
-          participant_1: currentUserId,
-          participant_2: recipientId,
-        })
-        .select()
-        .single();
+    try {
+      // Check if conversation exists
+      let conversationId: string;
+      const existingConv = conversations.find(conv => 
+        (conv.participant_1 === currentUserId && conv.participant_2 === recipientId) ||
+        (conv.participant_1 === recipientId && conv.participant_2 === currentUserId)
+      );
       
-      if (convError) {
-        console.error('Error creating conversation:', convError);
+      if (existingConv) {
+        conversationId = existingConv.id;
+      } else {
+        // Create new conversation
+        const { data: newConv, error: convError } = await supabase
+          .from('conversations')
+          .insert({
+            participant_1: currentUserId,
+            participant_2: recipientId,
+            last_message_at: new Date().toISOString()
+          })
+          .select()
+          .single();
+        
+        if (convError) {
+          console.error('Error creating conversation:', convError);
+          toast({
+            title: "Error",
+            description: "Failed to create conversation. Please try again.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        conversationId = newConv.id;
+      }
+      
+      // Send message
+      const { error: msgError } = await supabase
+        .from('messages')
+        .insert({
+          conversation_id: conversationId,
+          sender_id: currentUserId,
+          content,
+          is_read: false
+        });
+      
+      if (msgError) {
+        console.error('Error sending message:', msgError);
         toast({
           title: "Error",
-          description: "Failed to create conversation",
+          description: "Failed to send message. Please try again.",
           variant: "destructive",
         });
         return;
       }
       
-      conversationId = newConv.id;
-    }
-    
-    // Send message
-    const { error: msgError } = await supabase
-      .from('messages')
-      .insert({
-        conversation_id: conversationId,
-        sender_id: currentUserId,
-        content,
-      });
-    
-    if (msgError) {
-      console.error('Error sending message:', msgError);
+      // Update conversation timestamp
+      await supabase
+        .from('conversations')
+        .update({ last_message_at: new Date().toISOString() })
+        .eq('id', conversationId);
+      
       toast({
-        title: "Error",
-        description: "Failed to send message",
+        title: "Message sent",
+        description: "Your message has been delivered",
+      });
+      
+      // Refresh data
+      await fetchConversations();
+      if (activeConversation === conversationId) {
+        await fetchMessages(conversationId);
+      }
+      
+    } catch (error) {
+      console.error('Error in sendMessage:', error);
+      toast({
+        title: "Error", 
+        description: "Something went wrong. Please try again.",
         variant: "destructive",
       });
-      return;
     }
-    
-    toast({
-      title: "Message sent",
-      description: "Your message has been delivered",
-    });
-  }, [currentUser, conversations, currentUserId]);
+  }, [currentUser, conversations, currentUserId, activeConversation, fetchConversations, fetchMessages]);
 
   // Start conversation with user
   const startConversation = useCallback(async (userId: string) => {
-    // Check if conversation already exists
-    const existingConv = conversations.find(conv => 
-      (conv.participant_1 === currentUserId && conv.participant_2 === userId) ||
-      (conv.participant_1 === userId && conv.participant_2 === currentUserId)
-    );
-    
-    if (existingConv) {
-      setActiveConversation(existingConv.id);
-      fetchMessages(existingConv.id);
-      return;
+    try {
+      // Check if conversation already exists
+      const existingConv = conversations.find(conv => 
+        (conv.participant_1 === currentUserId && conv.participant_2 === userId) ||
+        (conv.participant_1 === userId && conv.participant_2 === currentUserId)
+      );
+      
+      if (existingConv) {
+        setActiveConversation(existingConv.id);
+        fetchMessages(existingConv.id);
+        return;
+      }
+      
+      // Create new conversation
+      const { data: newConv, error } = await supabase
+        .from('conversations')
+        .insert({
+          participant_1: currentUserId,
+          participant_2: userId,
+          last_message_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('Error creating conversation:', error);
+        toast({
+          title: "Error",
+          description: "Failed to start conversation. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      setActiveConversation(newConv.id);
+      fetchMessages(newConv.id);
+      fetchConversations(); // Refresh conversations list
+      
+    } catch (error) {
+      console.error('Error in startConversation:', error);
+      toast({
+        title: "Error",
+        description: "Something went wrong. Please try again.", 
+        variant: "destructive",
+      });
     }
-    
-    // Create new conversation
-    const { data: newConv, error } = await supabase
-      .from('conversations')
-      .insert({
-        participant_1: currentUserId,
-        participant_2: userId,
-      })
-      .select()
-      .single();
-    
-    if (error) {
-      console.error('Error creating conversation:', error);
-      return;
-    }
-    
-    setActiveConversation(newConv.id);
-    fetchMessages(newConv.id);
-    fetchConversations(); // Refresh conversations list
   }, [conversations, currentUserId, fetchMessages, fetchConversations]);
 
   // Set up real-time subscriptions
