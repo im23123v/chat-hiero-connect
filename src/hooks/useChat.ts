@@ -1,9 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { User, Conversation, Message, canUsersCommunicate } from '@/types/chat';
+import { User, Conversation, Message } from '@/types/chat';
+import { canUsersCommunicateWithSettings } from '@/utils/chatRules';
+import { usePermissions } from '@/hooks/usePermissions';
 import { toast } from '@/hooks/use-toast';
 
 export function useChat(currentUserId: string) {
+  const { getChatRestrictions, hasPermission } = usePermissions();
   const [users, setUsers] = useState<User[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -47,10 +50,17 @@ export function useChat(currentUserId: string) {
       return;
     }
     
-    // Filter users based on hierarchy rules
-    const allowedUsers = data.filter(user => 
-      canUsersCommunicate(currentUser.role, user.role)
-    );
+    // Filter users based on enhanced chat rules
+    const allowedUsers = data.filter(user => {
+      const chatRestrictions = getChatRestrictions(currentUser.role);
+      const hasPermissionFn = (permission: string) => hasPermission(permission, currentUser.role);
+      return canUsersCommunicateWithSettings(
+        currentUser.role, 
+        user.role, 
+        chatRestrictions, 
+        hasPermissionFn
+      );
+    });
     
     setUsers(allowedUsers);
   }, [currentUser, currentUserId]);

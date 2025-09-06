@@ -1,11 +1,16 @@
+import { useState } from 'react';
 import { User, Conversation } from '@/types/chat';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { MessageCircle, Users, Crown, GraduationCap, BookOpen } from 'lucide-react';
+import { MessageCircle, Users, Crown, GraduationCap, BookOpen, Settings } from 'lucide-react';
 import { CreateUserDialog } from './CreateUserDialog';
+import { AdminSettingsPanel } from './AdminSettingsPanel';
+import { usePermissions } from '@/hooks/usePermissions';
+import { canUserPerformAction } from '@/utils/chatRules';
 
 interface ChatSidebarProps {
   currentUser: User;
@@ -70,34 +75,51 @@ export function ChatSidebar({
   onStartConversation,
   onUserCreated,
 }: ChatSidebarProps) {
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const { hasPermission } = usePermissions();
+  
+  const canAccessAdminPanel = canUserPerformAction('access_admin_panel', currentUser.role, (permission) => 
+    hasPermission(permission, currentUser.role)
+  );
   return (
-    <div className="w-80 border-r border-border bg-card h-full flex flex-col">
-      {/* Header */}
-      <div className="p-4 border-b border-border">
-        <div className="flex items-center gap-3 mb-4">
-          <Avatar className="w-10 h-10">
-            <AvatarImage src={currentUser.avatar_url} />
-            <AvatarFallback>{currentUser.name.slice(0, 2).toUpperCase()}</AvatarFallback>
-          </Avatar>
-          <div>
-            <h2 className="font-semibold text-foreground">{currentUser.name}</h2>
-            <div className="flex items-center gap-2">
-              {getRoleIcon(currentUser.role)}
-              <Badge variant={getRoleBadgeVariant(currentUser.role)} className="text-xs">
-                {currentUser.role.replace('_', ' ').toUpperCase()}
-              </Badge>
+    <>
+      <div className="w-80 border-r border-border bg-card h-full flex flex-col">
+        {/* Header */}
+        <div className="p-4 border-b border-border">
+          <div className="flex items-center gap-3 mb-4">
+            <Avatar className="w-10 h-10">
+              <AvatarImage src={currentUser.avatar_url} />
+              <AvatarFallback>{currentUser.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+            </Avatar>
+            <div className="flex-1">
+              <h2 className="font-semibold text-foreground">{currentUser.name}</h2>
+              <div className="flex items-center gap-2">
+                {getRoleIcon(currentUser.role)}
+                <Badge variant={getRoleBadgeVariant(currentUser.role)} className="text-xs">
+                  {currentUser.role.replace('_', ' ').toUpperCase()}
+                </Badge>
+              </div>
             </div>
+            {canAccessAdminPanel && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAdminPanel(true)}
+                className="p-2"
+              >
+                <Settings className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
+          
+          {/* Add User Button */}
+          <div className="px-4 pb-2">
+            <CreateUserDialog 
+              currentUserRole={currentUser.role} 
+              onUserCreated={onUserCreated}
+            />
           </div>
         </div>
-        
-        {/* Add User Button */}
-        <div className="px-4 pb-2">
-          <CreateUserDialog 
-            currentUserRole={currentUser.role} 
-            onUserCreated={onUserCreated}
-          />
-        </div>
-      </div>
 
       <ScrollArea className="flex-1">
         {/* Recent Conversations */}
@@ -206,5 +228,14 @@ export function ChatSidebar({
         </div>
       </ScrollArea>
     </div>
+    
+    {/* Admin Settings Panel */}
+    {showAdminPanel && (
+      <AdminSettingsPanel 
+        currentUser={currentUser} 
+        onClose={() => setShowAdminPanel(false)} 
+      />
+    )}
+  </>
   );
 }
