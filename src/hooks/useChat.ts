@@ -262,9 +262,14 @@ export function useChat(currentUserId: string) {
   useEffect(() => {
     if (!currentUserId) return;
 
-    // Set up message real-time subscription
-    const messagesChannel = supabase
-      .channel('messages-realtime')
+    // Enhanced real-time channel with better filtering
+    const realtimeChannel = supabase
+      .channel(`chat-${currentUserId}`, {
+        config: {
+          broadcast: { self: true },
+          presence: { key: currentUserId }
+        }
+      })
       .on(
         'postgres_changes',
         {
@@ -274,6 +279,10 @@ export function useChat(currentUserId: string) {
         },
         async (payload) => {
           const newMessage = payload.new as Message;
+          
+          // Check if message is relevant to current user
+          const isRelevant = await checkMessageRelevance(newMessage.conversation_id);
+          if (!isRelevant) return;
           
           // Fetch sender info for the new message
           const { data: sender } = await supabase
@@ -287,36 +296,58 @@ export function useChat(currentUserId: string) {
             sender: sender
           } as Message;
           
-          // Only add to current conversation if it matches
+          // Add to current conversation if it matches
           if (newMessage.conversation_id === activeConversation) {
-            setMessages(prev => [...prev, messageWithSender]);
+            setMessages(prev => {
+              // Prevent duplicates
+              const exists = prev.some(msg => msg.id === newMessage.id);
+              if (exists) return prev;
+              return [...prev, messageWithSender];
+            });
           }
           
           // Refresh conversations to update last message
           fetchConversations();
+          
+          // Show notification for new messages not in active conversation
+          if (newMessage.conversation_id !== activeConversation && newMessage.sender_id !== currentUserId) {
+            toast({
+              title: "New message",
+              description: `Message from ${sender?.name || 'Unknown'}`,
+            });
+          }
         }
       )
-      .subscribe();
-
-    // Set up conversation real-time subscription
-    const conversationsChannel = supabase
-      .channel('conversations-realtime')
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
           schema: 'public',
           table: 'conversations',
         },
-        () => {
-          fetchConversations();
+        (payload) => {
+          const newConv = payload.new as any;
+          // Check if this conversation involves current user
+          if (newConv.participant_1 === currentUserId || newConv.participant_2 === currentUserId) {
+            fetchConversations();
+          }
         }
       )
-      .subscribe();
-
-    // Set up users real-time subscription for online status
-    const usersChannel = supabase
-      .channel('users-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'conversations',
+        },
+        (payload) => {
+          const updatedConv = payload.new as any;
+          // Check if this conversation involves current user
+          if (updatedConv.participant_1 === currentUserId || updatedConv.participant_2 === currentUserId) {
+            fetchConversations();
+          }
+        }
+      )
       .on(
         'postgres_changes',
         {
@@ -351,14 +382,28 @@ export function useChat(currentUserId: string) {
                 : conv
             )
           );
+          
+          // Update current user if it's them
+          if (updatedUser.id === currentUserId) {
+            setCurrentUser(prev => prev ? { ...prev, ...updatedUser } : null);
+          }
         }
       )
       .subscribe();
 
+    // Helper function to check if message is relevant to current user
+    const checkMessageRelevance = async (conversationId: string) => {
+      const { data } = await supabase
+        .from('conversations')
+        .select('participant_1, participant_2')
+        .eq('id', conversationId)
+        .maybeSingle();
+      
+      return data && (data.participant_1 === currentUserId || data.participant_2 === currentUserId);
+    };
+
     return () => {
-      supabase.removeChannel(messagesChannel);
-      supabase.removeChannel(conversationsChannel);
-      supabase.removeChannel(usersChannel);
+      supabase.removeChannel(realtimeChannel);
     };
   }, [activeConversation, fetchConversations, currentUserId]);
 
