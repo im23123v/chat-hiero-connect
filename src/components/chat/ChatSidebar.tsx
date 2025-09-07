@@ -10,7 +10,7 @@ import { MessageCircle, Users, Crown, GraduationCap, BookOpen, Settings } from '
 import { CreateUserDialog } from './CreateUserDialog';
 import { AdminSettingsPanel } from './AdminSettingsPanel';
 import { usePermissions } from '@/hooks/usePermissions';
-import { canUserPerformAction } from '@/utils/chatRules';
+import { canUserPerformAction, canUsersCommunicateWithSettings } from '@/utils/chatRules';
 
 interface ChatSidebarProps {
   currentUser: User;
@@ -76,7 +76,18 @@ export function ChatSidebar({
   onUserCreated,
 }: ChatSidebarProps) {
   const [showAdminPanel, setShowAdminPanel] = useState(false);
-  const { hasPermission } = usePermissions();
+  const { hasPermission, getChatRestrictions } = usePermissions();
+  
+  // Filter users based on current user's chat restrictions
+  const chatRestrictions = getChatRestrictions(currentUser.role);
+  const availableUsers = users.filter(user => 
+    canUsersCommunicateWithSettings(
+      currentUser.role, 
+      user.role, 
+      chatRestrictions, 
+      (permission) => hasPermission(permission, currentUser.role)
+    )
+  );
   
   const canAccessAdminPanel = canUserPerformAction('access_admin_panel', currentUser.role, (permission) => 
     hasPermission(permission, currentUser.role)
@@ -190,7 +201,7 @@ export function ChatSidebar({
             Available to Chat
           </h3>
           <div className="space-y-2">
-            {users.map((user) => (
+            {availableUsers.map((user) => (
               <Card
                 key={user.id}
                 className="cursor-pointer transition-all duration-200 hover:bg-chat-hover hover:shadow-sm"
