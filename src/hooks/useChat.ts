@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Conversation, Message } from '@/types/chat';
-import { canUsersCommunicateWithSettings } from '@/utils/chatRules';
+import { canUsersCommunicateWithSettings, canSendMessage } from '@/utils/chatRules';
 import { usePermissions } from '@/hooks/usePermissions';
 import { toast } from '@/hooks/use-toast';
 
@@ -136,6 +136,55 @@ export function useChat(currentUserId: string) {
   const sendMessage = useCallback(async (content: string, recipientId: string) => {
     if (!currentUser) return;
     
+    // Get recipient user data to check communication permissions
+    const { data: recipient } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', recipientId)
+      .maybeSingle();
+    
+    if (!recipient) {
+      toast({
+        title: "Error",
+        description: "Recipient not found",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Check if current user can communicate with recipient based on current settings
+    const chatRestrictions = getChatRestrictions(currentUser.role);
+    const hasPermissionFn = (permission: string) => hasPermission(permission, currentUser.role);
+    
+    const canCommunicate = canUsersCommunicateWithSettings(
+      currentUser.role,
+      recipient.role,
+      chatRestrictions,
+      hasPermissionFn
+    );
+    
+    if (!canCommunicate) {
+      toast({
+        title: "Communication Restricted",
+        description: `You are not allowed to chat with ${recipient.role.replace('_', ' ')}s based on current settings`,
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Check daily message limits
+    // Note: You would typically track this in the database
+    // For now, we'll just check the basic restrictions
+    const messageCheck = canSendMessage(currentUser.role, 0, chatRestrictions);
+    if (!messageCheck.canSend) {
+      toast({
+        title: "Message Limit Reached",
+        description: messageCheck.reason,
+        variant: "destructive",
+      });
+      return;
+    }
+    
     try {
       // Check if conversation exists
       let conversationId: string;
@@ -220,7 +269,80 @@ export function useChat(currentUserId: string) {
 
   // Start conversation with user
   const startConversation = useCallback(async (userId: string) => {
+    if (!currentUser) return;
+    
+    // Get target user data to check communication permissions
+    const { data: targetUser } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
+    
+    if (!targetUser) {
+      toast({
+        title: "Error",
+        description: "User not found",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Check if current user can communicate with target user based on current settings
+    const chatRestrictions = getChatRestrictions(currentUser.role);
+    const hasPermissionFn = (permission: string) => hasPermission(permission, currentUser.role);
+    
+    const canCommunicate = canUsersCommunicateWithSettings(
+      currentUser.role,
+      targetUser.role,
+      chatRestrictions,
+      hasPermissionFn
+    );
+    
+    if (!canCommunicate) {
+      toast({
+        title: "Communication Restricted",
+        description: `You are not allowed to start conversations with ${targetUser.role.replace('_', ' ')}s based on current settings`,
+        variant: "destructive",
+      });
+      return;
+    }
     try {
+      // Get target user data to check communication permissions
+      const { data: targetUser } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+      
+      if (!targetUser) {
+        toast({
+          title: "Error",
+          description: "User not found",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Check if current user can communicate with target user based on current settings
+      const chatRestrictions = getChatRestrictions(currentUser.role);
+      const hasPermissionFn = (permission: string) => hasPermission(permission, currentUser.role);
+      
+      const canCommunicate = canUsersCommunicateWithSettings(
+        currentUser.role,
+        targetUser.role,
+        chatRestrictions,
+        hasPermissionFn
+      );
+      
+      if (!canCommunicate) {
+        toast({
+          title: "Communication Restricted",
+          description: `You are not allowed to start conversations with ${targetUser.role.replace('_', ' ')}s based on current settings`,
+          variant: "destructive",
+        });
+        return;
+      }
+      
       // Check if conversation already exists
       const existingConv = conversations.find(conv => 
         (conv.participant_1 === currentUserId && conv.participant_2 === userId) ||
