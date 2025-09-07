@@ -88,6 +88,8 @@ export function usePermissions() {
   // Update a role setting
   const updateRoleSetting = useCallback(async (role: string, settingKey: string, value: any) => {
     try {
+      console.log('Updating role setting:', { role, settingKey, value });
+      
       const { error } = await supabase
         .from('role_settings')
         .upsert({
@@ -98,15 +100,16 @@ export function usePermissions() {
         });
 
       if (error) {
-        console.error('Error updating role setting:', error);
+        console.error('Supabase error updating role setting:', error);
         toast({
           title: "Error",
-          description: "Failed to update role setting",
+          description: `Failed to update role setting: ${error.message}`,
           variant: "destructive"
         });
         return;
       }
 
+      console.log('Role setting updated successfully, fetching updated settings...');
       await fetchRoleSettings();
       
       toast({
@@ -114,10 +117,10 @@ export function usePermissions() {
         description: "Role setting updated successfully"
       });
     } catch (error) {
-      console.error('Error in updateRoleSetting:', error);
+      console.error('Unexpected error in updateRoleSetting:', error);
       toast({
         title: "Error",
-        description: "Something went wrong",
+        description: "Something went wrong while updating settings",
         variant: "destructive"
       });
     }

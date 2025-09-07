@@ -25,29 +25,52 @@ export function AdminSettingsPanel({ currentUser, onClose }: AdminSettingsPanelP
   const roles: UserRole[] = ['super_admin', 'admin', 'teacher', 'student'];
 
   const handleChatRestrictionsUpdate = async (role: UserRole, restrictions: ChatRestrictions) => {
-    await updateRoleSetting(role, 'chat_restrictions', restrictions);
+    try {
+      console.log('Updating chat restrictions:', { role, restrictions });
+      await updateRoleSetting(role, 'chat_restrictions', restrictions);
+    } catch (error) {
+      console.error('Error updating chat restrictions:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update chat restrictions",
+        variant: "destructive"
+      });
+    }
   };
 
   const RoleChatSettings = ({ role }: { role: UserRole }) => {
-    const [restrictions, setRestrictions] = useState<ChatRestrictions>(getChatRestrictions(role));
+    const [restrictions, setRestrictions] = useState<ChatRestrictions>(() => getChatRestrictions(role));
 
     const handleAllowedRolesChange = (targetRole: UserRole, allowed: boolean) => {
-      const newAllowedRoles = allowed 
-        ? [...restrictions.can_chat_with, targetRole]
-        : restrictions.can_chat_with.filter(r => r !== targetRole);
-      
-      const newRestrictions = { 
-        ...restrictions, 
-        can_chat_with: [...new Set(newAllowedRoles)] 
-      };
-      setRestrictions(newRestrictions);
-      handleChatRestrictionsUpdate(role, newRestrictions);
+      try {
+        console.log('Changing allowed roles:', { targetRole, allowed, currentRestrictions: restrictions });
+        
+        const newAllowedRoles = allowed 
+          ? [...restrictions.can_chat_with, targetRole]
+          : restrictions.can_chat_with.filter(r => r !== targetRole);
+        
+        const newRestrictions = { 
+          ...restrictions, 
+          can_chat_with: [...new Set(newAllowedRoles)] 
+        };
+        
+        console.log('New restrictions:', newRestrictions);
+        setRestrictions(newRestrictions);
+        handleChatRestrictionsUpdate(role, newRestrictions);
+      } catch (error) {
+        console.error('Error in handleAllowedRolesChange:', error);
+      }
     };
 
     const handleMessageLimitChange = (limit: number | null) => {
-      const newRestrictions = { ...restrictions, max_daily_messages: limit };
-      setRestrictions(newRestrictions);
-      handleChatRestrictionsUpdate(role, newRestrictions);
+      try {
+        console.log('Changing message limit:', { role, limit, currentRestrictions: restrictions });
+        const newRestrictions = { ...restrictions, max_daily_messages: limit };
+        setRestrictions(newRestrictions);
+        handleChatRestrictionsUpdate(role, newRestrictions);
+      } catch (error) {
+        console.error('Error in handleMessageLimitChange:', error);
+      }
     };
 
     return (
