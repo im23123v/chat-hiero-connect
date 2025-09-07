@@ -9,6 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { MessageCircle, Users, Crown, GraduationCap, BookOpen, Settings } from 'lucide-react';
 import { CreateUserDialog } from './CreateUserDialog';
 import { AdminSettingsPanel } from './AdminSettingsPanel';
+import { useChatPermissions } from '@/hooks/useChatPermissions';
 import { usePermissions } from '@/hooks/usePermissions';
 import { canUserPerformAction, canUsersCommunicateWithSettings } from '@/utils/chatRules';
 
@@ -76,18 +77,14 @@ export function ChatSidebar({
   onUserCreated,
 }: ChatSidebarProps) {
   const [showAdminPanel, setShowAdminPanel] = useState(false);
-  const { hasPermission, getChatRestrictions } = usePermissions();
+  const { canChatWith } = useChatPermissions();
+  const { hasPermission } = usePermissions();
   
-  // Filter users based on current user's chat restrictions
-  const chatRestrictions = getChatRestrictions(currentUser.role);
-  const availableUsers = users.filter(user => 
-    canUsersCommunicateWithSettings(
-      currentUser.role, 
-      user.role, 
-      chatRestrictions, 
-      (permission) => hasPermission(permission, currentUser.role)
-    )
-  );
+  // Filter users based on chat permissions
+  const availableUsers = users.filter(user => {
+    if (user.id === currentUser.id) return false;
+    return canChatWith(currentUser.role, user.role);
+  });
   
   const canAccessAdminPanel = canUserPerformAction('access_admin_panel', currentUser.role, (permission) => 
     hasPermission(permission, currentUser.role)

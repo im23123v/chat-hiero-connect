@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      chat_permissions: {
+        Row: {
+          can_chat_with: string[]
+          created_at: string
+          daily_message_limit: number | null
+          id: string
+          role: string
+          updated_at: string
+        }
+        Insert: {
+          can_chat_with?: string[]
+          created_at?: string
+          daily_message_limit?: number | null
+          id?: string
+          role: string
+          updated_at?: string
+        }
+        Update: {
+          can_chat_with?: string[]
+          created_at?: string
+          daily_message_limit?: number | null
+          id?: string
+          role?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       conversations: {
         Row: {
           created_at: string

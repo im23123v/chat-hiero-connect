@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { usePermissions } from '@/hooks/usePermissions';
+import { useChatPermissions } from '@/hooks/useChatPermissions';
 import { User, UserRole } from '@/types/chat';
-import { ChatRestrictions } from '@/types/permissions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,44 +18,43 @@ interface AdminSettingsPanelProps {
 }
 
 export function AdminSettingsPanel({ currentUser, onClose }: AdminSettingsPanelProps) {
-  const { roleSettings, getChatRestrictions, updateRoleSetting, loading } = usePermissions();
+  const { permissions, updateChatPermission, loading } = useChatPermissions();
   const [activeTab, setActiveTab] = useState<'chat' | 'permissions' | 'users'>('chat');
 
   const roles: UserRole[] = ['super_admin', 'admin', 'teacher', 'student'];
 
-  const handleChatRestrictionsUpdate = async (role: UserRole, restrictions: ChatRestrictions) => {
+  const handleChatPermissionUpdate = async (role: UserRole, canChatWith: string[], dailyLimit: number | null) => {
     try {
-      console.log('Updating chat restrictions:', { role, restrictions });
-      await updateRoleSetting(role, 'chat_restrictions', restrictions);
+      console.log('Updating chat permissions:', { role, canChatWith, dailyLimit });
+      await updateChatPermission(role, canChatWith, dailyLimit);
     } catch (error) {
-      console.error('Error updating chat restrictions:', error);
+      console.error('Error updating chat permissions:', error);
       toast({
         title: "Error",
-        description: "Failed to update chat restrictions",
+        description: "Failed to update chat permissions",
         variant: "destructive"
       });
     }
   };
 
   const RoleChatSettings = ({ role }: { role: UserRole }) => {
-    const [restrictions, setRestrictions] = useState<ChatRestrictions>(() => getChatRestrictions(role));
+    const rolePermission = permissions.find(p => p.role === role);
+    const [canChatWith, setCanChatWith] = useState<string[]>(() => rolePermission?.can_chat_with || []);
+    const [dailyLimit, setDailyLimit] = useState<number | null>(() => rolePermission?.daily_message_limit || null);
 
     const handleAllowedRolesChange = (targetRole: UserRole, allowed: boolean) => {
       try {
-        console.log('Changing allowed roles:', { targetRole, allowed, currentRestrictions: restrictions });
+        console.log('Changing allowed roles:', { targetRole, allowed, currentCanChatWith: canChatWith });
         
-        const newAllowedRoles = allowed 
-          ? [...restrictions.can_chat_with, targetRole]
-          : restrictions.can_chat_with.filter(r => r !== targetRole);
+        const newCanChatWith = allowed 
+          ? [...canChatWith, targetRole]
+          : canChatWith.filter(r => r !== targetRole);
         
-        const newRestrictions = { 
-          ...restrictions, 
-          can_chat_with: [...new Set(newAllowedRoles)] 
-        };
+        const uniqueCanChatWith = [...new Set(newCanChatWith)];
         
-        console.log('New restrictions:', newRestrictions);
-        setRestrictions(newRestrictions);
-        handleChatRestrictionsUpdate(role, newRestrictions);
+        console.log('New can chat with:', uniqueCanChatWith);
+        setCanChatWith(uniqueCanChatWith);
+        handleChatPermissionUpdate(role, uniqueCanChatWith, dailyLimit);
       } catch (error) {
         console.error('Error in handleAllowedRolesChange:', error);
       }
@@ -64,10 +62,9 @@ export function AdminSettingsPanel({ currentUser, onClose }: AdminSettingsPanelP
 
     const handleMessageLimitChange = (limit: number | null) => {
       try {
-        console.log('Changing message limit:', { role, limit, currentRestrictions: restrictions });
-        const newRestrictions = { ...restrictions, max_daily_messages: limit };
-        setRestrictions(newRestrictions);
-        handleChatRestrictionsUpdate(role, newRestrictions);
+        console.log('Changing message limit:', { role, limit, currentLimit: dailyLimit });
+        setDailyLimit(limit);
+        handleChatPermissionUpdate(role, canChatWith, limit);
       } catch (error) {
         console.error('Error in handleMessageLimitChange:', error);
       }
@@ -89,7 +86,7 @@ export function AdminSettingsPanel({ currentUser, onClose }: AdminSettingsPanelP
                 <div key={targetRole} className="flex items-center justify-between p-2 border rounded">
                   <span className="text-sm">{targetRole.replace('_', ' ')}</span>
                   <Switch
-                    checked={restrictions.can_chat_with.includes(targetRole)}
+                    checked={canChatWith.includes(targetRole)}
                     onCheckedChange={(checked) => handleAllowedRolesChange(targetRole, checked)}
                   />
                 </div>
@@ -105,7 +102,7 @@ export function AdminSettingsPanel({ currentUser, onClose }: AdminSettingsPanelP
               <Input
                 id={`${role}-limit`}
                 type="number"
-                value={restrictions.max_daily_messages || ''}
+                value={dailyLimit || ''}
                 onChange={(e) => {
                   const value = e.target.value ? parseInt(e.target.value) : null;
                   handleMessageLimitChange(value);
