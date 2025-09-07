@@ -6,7 +6,7 @@ CREATE TABLE public.users (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   name TEXT NOT NULL,
   role user_role NOT NULL,
-  avatar_url TEXT,
+  avatar_url TEXT, 
   is_online BOOLEAN DEFAULT false,
   last_seen TIMESTAMP WITH TIME ZONE DEFAULT now(),
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
